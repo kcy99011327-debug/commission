@@ -239,9 +239,7 @@ h2.sec .meta{font-family:var(--body);font-size:0.75rem;color:var(--ink-2)}
 .cal .d button span{overflow:hidden;text-overflow:ellipsis;min-width:0;padding:0 1px}
 /* items in a day: 1 column on phone, 2 side by side on wider screens */
 .cal .d .items{display:grid;grid-template-columns:minmax(0,1fr);gap:3px;align-items:start}
-@media (min-width:600px){.cal .d .items{grid-template-columns:repeat(2,minmax(0,1fr))}
-  /* a lone item on a day takes the full width */
-  .cal .d .items>button:only-child{grid-column:1/-1}}
+/* one item per line at every width (thumbnails removed) */
 /* thumbnail fills its column width and scales with the window; original proportions kept */
 .cal .d button .cthumb{display:block;width:100%;height:auto;border-radius:3px}
 
@@ -667,7 +665,7 @@ function renderCal(){
   "일월화수목금토".split("").forEach(d=>h+=`<div class="h">${d}</div>`);
   for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=iso(d);
     if(i>=35&&d.getMonth()!==m)break;
-    h+=`<div class="d${d.getMonth()!==m?" out":""}${k===tIso?" today":""}${k<tIso?" past":""}"><span class="n">${d.getDate()}</span>${(byDay[k]||[]).length?`<div class="items">`:""}${(byDay[k]||[]).map(c=>{const t=calThumb(c);return `<button type="button" class="pill s-${esc(c.status.replace(/\s/g,""))}" data-open="${c.id}" data-dk="${k}" title="${esc(c.nick)}"><span>${esc(c.nick)}</span>${t?`<img class="cthumb" src="${imgSrc(t)}" alt="" loading="lazy">`:""}</button>`}).join("")}${(byDay[k]||[]).length?`</div>`:""}</div>`}
+    h+=`<div class="d${d.getMonth()!==m?" out":""}${k===tIso?" today":""}${k<tIso?" past":""}"><span class="n">${d.getDate()}</span>${(byDay[k]||[]).length?`<div class="items">`:""}${(byDay[k]||[]).map(c=>`<button type="button" class="pill s-${esc(c.status.replace(/\s/g,""))}" data-open="${c.id}" data-dk="${k}" title="${esc(c.nick)}"><span>${esc(c.nick)}</span></button>`).join("")}${(byDay[k]||[]).length?`</div>`:""}</div>`}
   h+=`</div><p class="hint" style="margin-top:0.625rem">색: <span class="pill s-예약">예약</span> <span class="pill s-입금확인">입금확인</span> <span class="pill s-중간확인완료">상영 예정</span> <span class="pill s-완성본전송">완료</span></p>`;
   $("#view").innerHTML=h;
   $("#pm").onclick=()=>{S.calM--;if(S.calM<0){S.calM=11;S.calY--}renderCal()};
