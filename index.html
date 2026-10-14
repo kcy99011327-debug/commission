@@ -544,6 +544,8 @@ body.is-reordering .tile,body.is-reordering .cal .items>button{cursor:grabbing}
 .tile .cap .l2{border-top:1px solid var(--rule);padding-top:0.4375rem;margin-top:0.125rem}
 /* price-range shortcuts are links under the hood: make them look like the other chips */
 a.chip,a.chip:visited{color:var(--ink);text-decoration:none}
+/* phone calendar: small, tight name tags so most names fit on one line (2 lines still allowed) */
+@media (max-width:599px){.cal .d button{font-size:0.5625rem;letter-spacing:-.04em;padding:3px 2px 3px}}
 /* brand logo: alpha mask painted in the theme color */
 .brand{align-items:center}
 .brand h1.logo{width:6.25rem;margin:0.375rem 0.5rem;aspect-ratio:640/389;flex:none;font-size:0;background:var(--pink);-webkit-mask:var(--logo) no-repeat left center/contain;mask:var(--logo) no-repeat left center/contain}
