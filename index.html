@@ -117,6 +117,34 @@ async function importBackup(file,msg){
   refreshAll();
   return{docs:recs.length,imgs:ids.length-fail,fail}}
 
+/* ---- app icon the user can replace from settings (stored in settings/main.appIcon) ---- */
+function applyAppIcon(id){
+  const url=id?IMG_BASE+id:"";
+  try{id?localStorage.setItem("cicon",id):localStorage.removeItem("cicon")}catch(e){}
+  const base=new URL(".",location.href).href;
+  const set=(rel,href)=>{let l=document.querySelector(`link[rel="${rel}"]`);if(!l){l=document.createElement("link");l.rel=rel;document.head.appendChild(l)}if(l.getAttribute("href")!==href)l.setAttribute("href",href)};
+  set("icon",url||"icon-192.png");set("apple-touch-icon",url||"apple-touch-icon.png");
+  if(url){const man={name:"COMMISSION 작업실",short_name:"커미션",start_url:base,scope:base,display:"standalone",background_color:"#0e0c11",theme_color:"#0e0c11",
+      icons:[{src:url,sizes:"512x512",type:"image/png",purpose:"any"}]};
+    set("manifest",URL.createObjectURL(new Blob([JSON.stringify(man)],{type:"application/manifest+json"})))}
+  else set("manifest","manifest.webmanifest");
+  try{window.desktop&&window.desktop.setIcon&&window.desktop.setIcon(url)}catch(e){}
+}
+try{const i=localStorage.getItem("cicon");if(i)applyAppIcon(i)}catch(e){}
+async function iconBlob(f){
+  const b=await createImageBitmap(f);const s=Math.min(b.width,b.height);
+  const cv=document.createElement("canvas");cv.width=cv.height=512;const x=cv.getContext("2d");
+  x.fillStyle="#ffffff";x.fillRect(0,0,512,512);   // home screens need an opaque square
+  x.imageSmoothingQuality="high";x.drawImage(b,(b.width-s)/2,(b.height-s)/2,s,s,0,0,512,512);b.close&&b.close();
+  return new Promise(r=>cv.toBlob(r,"image/png"))}
+async function setAppIcon(file){
+  const old=(S.rawSettings||{}).appIcon;
+  let id="";
+  if(file){const blob=await iconBlob(file);id="appicon-"+newId();
+    const{error}=await sb.storage.from("images").upload(id,blob,{contentType:"image/png",cacheControl:"31536000"});if(error)throw error}
+  await saveSettings({appIcon:id});applyAppIcon(id);
+  if(old&&old!==id)sb.storage.from("images").remove([old]).catch(()=>{})}
+
 </script>
 
 <style>/* everything below is sized in rem, so the whole app scales with this one fluid value */
@@ -1038,12 +1066,22 @@ $("#themeBtn").onclick=()=>{
     <h2 class="sec" style="margin-top:1.25rem">백업<span class="meta">내 컴퓨터·폰에 저장</span></h2>
     <p class="hint" style="margin:0 0 0.5rem">한 달에 한 번쯤 받아두면 안전해요. 전체 백업에는 커미션 목록, 답장 템플릿, 모든 이미지가 들어가요.</p>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap"><button class="btn" type="button" id="bkCsv">커미션 목록 (CSV)</button><button class="btn" type="button" id="bkZip">전체 백업 (ZIP)</button><button class="btn" type="button" id="bkImp">백업 가져오기</button><input type="file" id="bkFile" accept=".zip,application/zip" hidden></div>
+    <h2 class="sec" style="margin-top:1.25rem">앱 아이콘<span class="meta">홈 화면·PC 프로그램</span></h2>
+    <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap"><img id="icPrev" alt="지금 아이콘" style="width:3.5rem;height:3.5rem;border-radius:0.875rem;border:1px solid var(--rule);object-fit:cover;background:#fff"><button class="btn" type="button" id="icUp">이미지 올리기</button><button class="btn" type="button" id="icReset">기본 아이콘</button><input type="file" id="icFile" accept="image/*" hidden></div>
+    <p class="hint" id="icMsg" style="margin-top:0.5rem">정사각형 이미지가 가장 좋아요. 아니면 가운데를 정사각형으로 잘라 써요. 폰은 홈 화면 아이콘을 지우고 다시 추가해야 바뀌어요.</p>
     <h2 class="sec" style="margin-top:1.25rem">계정</h2>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center"><button class="btn" type="button" id="logout">로그아웃</button></div>
     <p class="hint" id="bkMsg" style="margin-top:0.5rem"></p>
     <div class="foot"><span></span><button class="btn pri" type="button" id="save">저장</button></div>`);
     $("#bkCsv").onclick=()=>backupCsv();$("#bkZip").onclick=()=>backupZip();
     $("#logout").onclick=async()=>{await sb.auth.signOut();location.reload()};
+    {const cur=(S.rawSettings||{}).appIcon;$("#icPrev").src=cur?IMG_BASE+cur:"apple-touch-icon.png";$("#icReset").disabled=!cur}
+    $("#icUp").onclick=()=>$("#icFile").click();
+    const icRun=async f=>{const m=$("#icMsg");m.textContent=f?"올리는 중…":"되돌리는 중…";
+      try{await setAppIcon(f);$("#icPrev").src=(S.rawSettings||{}).appIcon?IMG_BASE+S.rawSettings.appIcon:"apple-touch-icon.png";$("#icReset").disabled=!f;m.textContent=f?"아이콘을 바꿨어요. 폰은 홈 화면 아이콘을 지우고 다시 추가해 주세요.":"기본 아이콘으로 돌렸어요.";toast("아이콘을 바꿨어요")}
+      catch(err){m.textContent="바꾸지 못했어요. 이미지 파일인지 확인하고 다시 시도해 주세요."}};
+    $("#icFile").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)icRun(f)};
+    $("#icReset").onclick=()=>icRun(null);
     $("#bkImp").onclick=()=>$("#bkFile").click();
     $("#bkFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;const msg=$("#bkMsg"),b=$("#bkImp");b.disabled=true;
       try{const r=await importBackup(f,t=>msg.textContent=t);msg.textContent=`가져왔어요 · 항목 ${r.docs}개, 이미지 ${r.imgs}장${r.fail?` (실패 ${r.fail}장)`:""}`;toast(`백업을 가져왔어요 · 커미션·템플릿 ${r.docs}개, 이미지 ${r.imgs}장${r.fail?` (실패 ${r.fail}장)`:""}`);close();render();return}
@@ -1315,6 +1353,6 @@ window.addEventListener("scroll",closeCtx,true);window.addEventListener("resize"
     if(!document.querySelector(".scrim")||first)render();else renderHeader();first=false},
     e=>{$("#view").innerHTML=`<div class="empty">목록을 불러오지 못했어요. 새로고침해 주세요.</div>`});
   db.collection("templates").orderBy("order").onSnapshot(s=>{S.t=s.docs.map(d=>({id:d.id,...d.data()}));if(S.tab==="tpl"&&!document.querySelector(".scrim"))renderTpl()},()=>{});
-  db.doc("settings/main").onSnapshot(s=>{const d=s.exists?s.data():{};S.rawSettings=d;S.settingsExists=s.exists;S.slots=d.slots??null;applyTheme(d.accent,d.mode);applyStatusDefs(Array.isArray(d.statuses)&&d.statuses.length?d.statuses:STATUS_DEFS_DEFAULT.map(x=>({...x,color:(d.statusColors||{})[x.name]||x.color})));if(!document.querySelector(".scrim"))render();else renderHeader()},()=>{});
+  db.doc("settings/main").onSnapshot(s=>{const d=s.exists?s.data():{};S.rawSettings=d;S.settingsExists=s.exists;applyAppIcon(d.appIcon||"");S.slots=d.slots??null;applyTheme(d.accent,d.mode);applyStatusDefs(Array.isArray(d.statuses)&&d.statuses.length?d.statuses:STATUS_DEFS_DEFAULT.map(x=>({...x,color:(d.statusColors||{})[x.name]||x.color})));if(!document.querySelector(".scrim"))render();else renderHeader()},()=>{});
 })();
 </script>
