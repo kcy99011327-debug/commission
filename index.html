@@ -596,7 +596,7 @@ let DONE=new Set(["완성본 전송"]),CANCEL=new Set(["취소"]);
 const TYPES=["포스터 타입","LD 전신","LD 두상","기타"];
 const SUBTYPES=["","①심플","②캐릭터 중심","③배경 중심","④번외"];
 const SOURCES=["크레페","카톡","기타"];
-const KINDS=["러프","시안","완성본","레퍼런스"];
+const KINDS=["시안","완성본"];
 const S={c:[],t:[],slots:null,tab:"list",calY:0,calM:0,q:"",galF:"all",tplFor:""};
 let db=null,assets=null,downloads=null;
 const $=s=>document.querySelector(s);
@@ -740,7 +740,7 @@ function renderGal(){
   list=[...list].sort(V==="wip"?((a,b)=>((a.due||"9")<(b.due||"9")?-1:(a.due||"9")>(b.due||"9")?1:0)||byDayOrder(a,b))
     :((a,b)=>(!!b.doneDate-!!a.doneDate)||desc(a.doneDate||"",b.doneDate||"")||byDayOrder(a,b)||desc(a.due||"",b.due||"")||(b.order||0)-(a.order||0)));
   const SO=S.galSort||"time";
-  let h=`<div class="seg" role="tablist" style="margin-top:0.875rem"><button type="button" role="tab" data-gv="done" aria-selected="${V==="done"}">상영 중 <span class="num">${doneAll.length}</span></button><button type="button" role="tab" data-gv="wip" aria-selected="${V==="wip"}">상영 예정 · 러프/시안 <span class="num">${wipAll.length}</span></button></div>`;
+  let h=`<div class="seg" role="tablist" style="margin-top:0.875rem"><button type="button" role="tab" data-gv="done" aria-selected="${V==="done"}">상영 중 <span class="num">${doneAll.length}</span></button><button type="button" role="tab" data-gv="wip" aria-selected="${V==="wip"}">상영 예정 · 시안 <span class="num">${wipAll.length}</span></button></div>`;
   const withImg=S.c.filter(c=>(c.images||[]).length).length;
   if(!withImg)h+=`<div class="notice">노션에 있던 이미지는 아직 노션에 있어요. 노션에서 이미지를 저장한 뒤 이 화면에 끌어다 놓거나 붙여넣으면 파일명으로 커미션을 찾아 연결해요.</div>`;
   const tile=c=>{const id=V==="wip"?latest(c):cover(c);const n=(c.images||[]).length;const st=stage(c);
@@ -826,8 +826,7 @@ document.addEventListener("paste",e=>{
 /* ---------- bulk upload: match file names to commissions ---------- */
 const norm=s=>String(s||"").normalize("NFC").toLowerCase().replace(/\.[a-z0-9]+$/,"").replace(/님|커미션|commission/g,"").replace(/[\s_\-.()\[\]·,#]+/g,"");
 function guessKind(name){const n=name.toLowerCase();
-  if(/러프|rough/.test(n))return"러프";if(/시안|draft|sketch|스케치/.test(n))return"시안";
-  if(/레퍼|ref/.test(n))return"레퍼런스";return"완성본"}
+  if(/러프|rough|시안|draft|sketch|스케치/.test(n))return"시안";return"완성본"}
 function matchCommission(name){
   const f=norm(name);let best=null,len=0;
   for(const c of S.c){const k=norm(c.nick);if(k&&f.includes(k)&&k.length>len){best=c;len=k.length}}
