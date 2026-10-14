@@ -580,6 +580,11 @@ h1.logo.raw{-webkit-mask:none!important;mask:none!important;background:var(--log
 .tyrow input{padding:0.4375rem 0.5rem;border:1px solid var(--rule);border-radius:0.5rem;background:var(--paper);min-width:0;width:100%}
 .tyrow .stx{border:0;background:none;color:var(--ink-2);font-size:1.125rem;line-height:1;width:1.75rem;height:1.75rem;padding:0;border-radius:0.375rem;cursor:pointer}
 .tyrow .stx:hover{color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+/* calendar tags: take-home amount under the name (full on wide screens, 만 units on phone) */
+.cal .d button .camt{display:block;font-size:0.9em;font-weight:500;opacity:.8;font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal .d button .camt b{font-weight:inherit}
+.cal .d button .camt .short{display:none}
+@media (max-width:599px){.cal .d button .camt .full{display:none}.cal .d button .camt .short{display:inline}}
 /* brand logo: alpha mask painted in the theme color */
 .brand{align-items:center}
 .brand h1.logo{width:6.25rem;margin:0.375rem 0.5rem;aspect-ratio:640/389;flex:none;font-size:0;background:var(--pink);-webkit-mask:var(--logo) no-repeat left center/contain;mask:var(--logo) no-repeat left center/contain}
@@ -729,7 +734,7 @@ function renderCal(){
   "일월화수목금토".split("").forEach(d=>h+=`<div class="h">${d}</div>`);
   for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=iso(d);
     if(i>=35&&d.getMonth()!==m)break;
-    h+=`<div class="d${d.getMonth()!==m?" out":""}${k===tIso?" today":""}${k<tIso?" past":""}"><span class="n">${d.getDate()}</span>${(byDay[k]||[]).length?`<div class="items">`:""}${(byDay[k]||[]).map(c=>`<button type="button" class="pill s-${esc(c.status.replace(/\s/g,""))}" data-open="${c.id}" data-dk="${k}" title="${esc(c.nick)}"><span>${esc(c.nick)}</span></button>`).join("")}${(byDay[k]||[]).length?`</div>`:""}</div>`}
+    h+=`<div class="d${d.getMonth()!==m?" out":""}${k===tIso?" today":""}${k<tIso?" past":""}"><span class="n">${d.getDate()}</span>${(byDay[k]||[]).length?`<div class="items">`:""}${(byDay[k]||[]).map(c=>`<button type="button" class="pill s-${esc(c.status.replace(/\s/g,""))}" data-open="${c.id}" data-dk="${k}" title="${esc(c.nick)}"><span>${esc(c.nick)}</span>${net(c)?`<small class="camt"><b class="full">${won(net(c))}</b><b class="short">${(net(c)/10000).toFixed(net(c)%10000?1:0).replace(/\.0$/,"")}만</b></small>`:""}</button>`).join("")}${(byDay[k]||[]).length?`</div>`:""}</div>`}
   h+=`</div><p class="hint" style="margin-top:0.625rem">색: <span class="pill s-예약">예약</span> <span class="pill s-입금확인">입금확인</span> <span class="pill s-중간확인완료">상영 예정</span> <span class="pill s-완성본전송">완료</span></p>`;
   $("#view").innerHTML=h;
   $("#pm").onclick=()=>{S.calM--;if(S.calM<0){S.calM=11;S.calY--}renderCal()};
