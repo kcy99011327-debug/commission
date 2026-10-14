@@ -111,7 +111,7 @@ async function importBackup(file,msg){
   msg("목록 옮기는 중…");
   const rows=[...(d.commissions||[]).map(c=>["commissions",c]),...(d.templates||[]).map(t=>["templates",t])];
   const ts=new Date().toISOString();
-  const recs=rows.map(([col,x])=>{const{id,...rest}=x;return{owner:UID,col,id,data:rest,updated_at:ts}});
+  const recs=rows.map(([col,x])=>{const{id,...rest}=x;if(Array.isArray(rest.images))rest.images=rest.images.map(({t,noThumb,...im})=>im);return{owner:UID,col,id,data:rest,updated_at:ts}});   // thumbnails are not in the zip: drop them, they are rebuilt in the background
   if(d.settings&&Object.keys(d.settings).length)recs.push({owner:UID,col:"settings",id:"main",data:d.settings,updated_at:ts});
   for(let i=0;i<recs.length;i+=100){const{error}=await sb.from("docs").upsert(recs.slice(i,i+100),{onConflict:"owner,col,id"});if(error)throw error}
   refreshAll();
@@ -776,7 +776,7 @@ function renderGal(){
   const withImg=S.c.filter(c=>(c.images||[]).length).length;
   if(!withImg)h+=`<div class="notice">노션에 있던 이미지는 아직 노션에 있어요. 노션에서 이미지를 저장한 뒤 이 화면에 끌어다 놓거나 붙여넣으면 파일명으로 커미션을 찾아 연결해요.</div>`;
   const tile=c=>{const id=V==="wip"?latest(c):cover(c);const n=(c.images||[]).length;const st=stage(c);
-    return `<div class="tile" role="button" tabindex="0" style="--r:${ratioOf(c,id)}" data-open="${c.id}" data-dk="${esc((V==="wip"?c.due:c.doneDate)||"")}">${id?`<img class="pic" draggable="false" data-aid="${id}" src="${imgSrc(id)}" alt="${esc(c.nick)} 작업물" loading="lazy">`:`<span class="ph">${V==="wip"?"아직 올린 시안 없음":c.notionUrl?"노션에 보관 중":"이미지 없음"}</span>`}
+    return `<div class="tile" role="button" tabindex="0" style="--r:${ratioOf(c,id)}" data-open="${c.id}" data-dk="${esc((V==="wip"?c.due:c.doneDate)||"")}">${id?`<img class="pic" draggable="false" data-aid="${id}" src="${imgSrc(thumbId(c,id))}" alt="${esc(c.nick)} 작업물" loading="lazy">`:`<span class="ph">${V==="wip"?"아직 올린 시안 없음":c.notionUrl?"노션에 보관 중":"이미지 없음"}</span>`}
     <span class="cap"><strong>${esc(c.nick)}</strong>${capLines(c,V)}</span></div>`};
   h+=`<div class="rowtrack" style="margin-top:0.625rem"><button type="button" class="chip" data-gs="time" aria-pressed="${SO==="time"}">${V==="wip"?"마감 순":"작업 순"}</button><button type="button" class="chip" data-gs="price" aria-pressed="${SO==="price"}">가격대별</button><button type="button" class="chip" data-gs="type" aria-pressed="${SO==="type"}">타입별</button></div>`;
   if(SO==="type"){
@@ -788,7 +788,7 @@ function renderGal(){
     if(!list.length)h+=`<div class="empty" style="margin-top:1rem">${V==="wip"?"상영 예정인 커미션이 없어요.":"상영 중인 작품이 아직 없어요."}</div>`;
     else if(!S.galType){
       h+=`<h2 class="sec">타입별 폴더<span class="meta">${keys.length}개</span></h2><div class="folders">${keys.map(k=>{const g=groups.get(k);
-        const covers=g.map(c=>V==="wip"?latest(c):cover(c)).filter(Boolean).slice(0,3);
+        const covers=g.map(c=>{const id=V==="wip"?latest(c):cover(c);return id?thumbId(c,id):null}).filter(Boolean).slice(0,3);
         return `<button type="button" class="folder" data-gt="${esc(k)}"><span class="fcov">${covers.length?covers.map(id=>`<img src="${imgSrc(id)}" alt="" loading="lazy">`).join(""):`<i>이미지 없음</i>`}</span><span class="fname"><b>${esc(k)}</b><small>${g.length}건</small></span></button>`}).join("")}</div>`}
     else{const g=groups.get(S.galType);
       h+=`<div class="fback"><button type="button" class="chip" data-gt="">← 타입 목록</button></div><h2 class="sec">${esc(S.galType)}<span class="meta">${g.length}건</span></h2><div class="gal">${g.map(tile).join("")}</div>`}
@@ -852,6 +852,23 @@ function applyLogo(l,el){el=el||document.querySelector(".brand h1.logo");if(!el)
   if(l&&l.id){const u=`url("${imgSrc(l.id)}")`;el.style.setProperty("--logo",u);el.style.aspectRatio=String(Math.min(8,Math.max(.25,l.r||2)));el.classList.toggle("raw",l.tint===false)}
   else{el.style.removeProperty("--logo");el.style.aspectRatio="";el.classList.remove("raw");
     const b=document.querySelector(".brand h1.logo");if(b&&el!==b){b.style.removeProperty("--logo");el.style.setProperty("--logo",getComputedStyle(b).getPropertyValue("--logo"))}}}
+/* thumbnails: every upload also gets a small WebP copy for the poster wall / folders / sheet grid; the original stays for full view and backup */
+const THUMB_MAX=960;
+async function makeThumb(blob){try{const b=await createImageBitmap(blob);const k=Math.min(1,THUMB_MAX/Math.max(b.width,b.height));
+  const cv=document.createElement("canvas");cv.width=Math.max(1,Math.round(b.width*k));cv.height=Math.max(1,Math.round(b.height*k));
+  cv.getContext("2d").drawImage(b,0,0,cv.width,cv.height);b.close&&b.close();
+  const out=await new Promise(r=>cv.toBlob(r,"image/webp",.82));return out&&out.size<blob.size?out:null}catch(e){return null}}
+async function upThumb(blob){const t=await makeThumb(blob);if(!t)return null;try{const r=await assets.upload(t,{type:"image/webp"});return r.id}catch(e){return null}}
+const thumbId=(c,id)=>{const im=(c.images||[]).find(x=>x.id===id);return (im&&im.t)||id};
+/* images uploaded before thumbnails existed get one in the background, once */
+let thumbsRunning=false;
+async function backfillThumbs(){if(thumbsRunning||!assets)return;thumbsRunning=true;
+  try{for(const c0 of [...S.c]){for(const im of (c0.images||[])){if(im.t||im.noThumb)continue;
+      let t=null;try{const r=await fetch(imgSrc(im.id));if(r.ok)t=await upThumb(await r.blob())}catch(e){}
+      const cur=S.c.find(x=>x.id===c0.id);if(!cur)continue;
+      const imgs=(cur.images||[]).map(x=>x.id===im.id?(t?{...x,t}:{...x,noThumb:true}):x);
+      try{await db.collection("commissions").doc(cur.id).update({images:imgs})}catch(e){}}}}
+  finally{thumbsRunning=false}}
 async function imgMeta(f){try{const b=await createImageBitmap(f);const r=b.width/b.height;b.close&&b.close();return{r:+r.toFixed(4)}}catch(e){return{}}}
 const isDup=(c,f)=>(c.images||[]).some(x=>x.name===f.name&&(x.size==null||x.size===f.size));
 
@@ -903,7 +920,7 @@ function bulkReview(all){
     let skip=0;
     for(const p of plan){$("#bulkMsg").textContent=`올리는 중… ${ok+fail+skip+1}/${plan.length}`;
       const tgt=S.c.find(x=>x.id===p.id);if((tgt&&isDup(tgt,p.f))||(added[p.id]||[]).some(x=>x.name===p.f.name&&x.size===p.f.size)){skip++;continue}
-      try{const meta=await imgMeta(p.f);const r=await assets.upload(p.f,{type:p.f.type||"image/png"});(added[p.id]=added[p.id]||[]).push({id:r.id,kind:p.kind,name:p.f.name,size:p.f.size,...meta,at:iso(today())});ok++}
+      try{const meta=await imgMeta(p.f);const r=await assets.upload(p.f,{type:p.f.type||"image/png"});const t=await upThumb(p.f);(added[p.id]=added[p.id]||[]).push({id:r.id,...(t?{t}:{}),kind:p.kind,name:p.f.name,size:p.f.size,...meta,at:iso(today())});ok++}
       catch(e){fail++;if(e.code==="quota_or_state"){toast("저장 공간이 가득 찼어요");break}}}
     for(const id of Object.keys(added)){const cur=S.c.find(x=>x.id===id);if(!cur)continue;
       const c=structuredClone(cur);c.images=[...(c.images||[]),...added[id]];await saveDoc(c,true)}
@@ -989,7 +1006,7 @@ function openJob(id,pre){
       <label class="full">추가사항<textarea id="f-notes">${esc(c.notes)}</textarea></label>
     </form>
     <h2 class="sec">작업물 백업<span class="meta">${(c.images||[]).length}장</span></h2>
-    <div class="imgs">${(c.images||[]).map((im,i)=>`<figure><img src="${imgSrc(im.id)}" alt="${esc(im.kind)}" data-view="${im.id}" loading="lazy"><figcaption><span>${esc(im.kind)}</span>${assets?`<button type="button" data-rm="${i}">삭제</button>`:""}</figcaption></figure>`).join("")}</div>
+    <div class="imgs">${(c.images||[]).map((im,i)=>`<figure><img src="${imgSrc(im.t||im.id)}" alt="${esc(im.kind)}" data-view="${im.id}" loading="lazy"><figcaption><span>${esc(im.kind)}</span>${assets?`<button type="button" data-rm="${i}">삭제</button>`:""}</figcaption></figure>`).join("")}</div>
     ${assets?`<div class="upl"><span class="hint">올릴 이미지 종류</span><select id="kind" aria-label="이미지 종류">${opts(KINDS,"완성본")}</select><label class="btn" for="file">＋ 이미지</label><span class="hint" id="uplMsg">이 창에 끌어다 놓거나 Ctrl+V로 붙여넣어도 돼요</span></div>
     <input id="file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>`:`<p class="hint">이미지 올리기는 편집 권한이 있을 때만 가능해요.</p>`}
     <div id="rmConfirm"></div>
@@ -1025,7 +1042,7 @@ function openJob(id,pre){
       $("#rmConfirm").innerHTML=`<div class="notice">이 이미지를 지울까요? 되돌릴 수 없어요. <button class="btn danger" type="button" id="rmYes">지우기</button> <button class="btn" type="button" id="rmNo">취소</button></div>`;
       $("#rmNo").onclick=()=>$("#rmConfirm").innerHTML="";
       $("#rmYes").onclick=async()=>{read();const im=c.images[i];c.images.splice(i,1);
-        if(c0)await saveDoc(c,true);try{await assets.delete(im.id)}catch(e){}draw()}});
+        if(c0)await saveDoc(c,true);try{await assets.delete(im.id)}catch(e){}if(im.t)try{await assets.delete(im.t)}catch(e){}draw()}});
     /* the whole sheet accepts dropped images; no separate drop box */
     const fi=$("#file"),dz=fi?document.querySelector(".panel"):null;S.pasteUpload=dz?(files=>upload(files)):null;
     if(fi)fi.onchange=()=>upload([...fi.files]);
@@ -1039,7 +1056,7 @@ function openJob(id,pre){
       read();const kind=$("#kind").value;let ok=0;dz.classList.add("busy");
       for(const f of files){$("#uplMsg").textContent=`올리는 중… (${ok+1}/${files.length})`;
         if(isDup(c,f)){toast(`‘${f.name}’은 이미 올라가 있어요`);continue}
-        try{const meta=await imgMeta(f);const r=await assets.upload(f,{type:f.type||"image/png"});c.images.push({id:r.id,kind,name:f.name,size:f.size,...meta,at:iso(today())});ok++}
+        try{const meta=await imgMeta(f);const r=await assets.upload(f,{type:f.type||"image/png"});const t=await upThumb(f);c.images.push({id:r.id,...(t?{t}:{}),kind,name:f.name,size:f.size,...meta,at:iso(today())});ok++}
         catch(e){toast(e.code==="too_large"?"20MB보다 큰 파일은 올릴 수 없어요":e.code==="quota_or_state"?"저장 공간이 가득 찼어요":"업로드에 실패했어요")}}
       if(ok&&c0)await saveDoc(c,true);draw();if(ok)toast(`${ok}장 저장했어요`+(c0?"":" · 의뢰인을 입력하고 닫으면 커미션이 만들어져요"))}
     $("#save").onclick=async()=>{read();if(!c.client){toast("의뢰인을 입력하세요");return}await saveDoc(c);close()};
@@ -1470,7 +1487,7 @@ document.addEventListener("contextmenu",e=>{
 });
 async function deleteJob(c){
   try{await db.collection("commissions").doc(c.id).delete();
-    if(assets)for(const im of (c.images||[])){try{await assets.delete(im.id)}catch(err){}}
+    if(assets)for(const im of (c.images||[])){try{await assets.delete(im.id)}catch(err){}if(im.t)try{await assets.delete(im.t)}catch(err){}}
     toast(`‘${c.nick}’ 커미션을 지웠어요`)}catch(err){toast("지우지 못했어요. 다시 시도해 주세요")}
 }
 document.addEventListener("click",e=>{if(ctxEl&&!e.target.closest(".ctx"))closeCtx()},true);
@@ -1484,7 +1501,7 @@ window.addEventListener("scroll",closeCtx,true);window.addEventListener("resize"
   if(!db){$("#view").innerHTML=`<div class="empty" style="margin-top:1.25rem">저장소에 연결할 수 없어요. 로그인한 상태로 다시 열어 주세요.</div>`;return}
   let first=true;
   db.collection("commissions").onSnapshot(s=>{S.c=s.docs.map(d=>({id:d.id,...d.data()}));relabel();
-    if(!document.querySelector(".scrim")||first)render();else renderHeader();first=false},
+    if(!document.querySelector(".scrim")||first)render();else renderHeader();if(first)setTimeout(backfillThumbs,4000);first=false},
     e=>{$("#view").innerHTML=`<div class="empty">목록을 불러오지 못했어요. 새로고침해 주세요.</div>`});
   db.collection("templates").orderBy("order").onSnapshot(s=>{S.t=s.docs.map(d=>({id:d.id,...d.data()}));if(S.tab==="tpl"&&!document.querySelector(".scrim"))renderTpl()},()=>{});
   db.doc("settings/main").onSnapshot(s=>{const d=s.exists?s.data():{};S.rawSettings=d;S.settingsExists=s.exists;applyAppIcon(d.appIcon||"");applyTypes(d.types);applyLogo(d.logo);S.slots=d.slots??null;applyTheme(d.accent,d.mode);applyStatusDefs(Array.isArray(d.statuses)&&d.statuses.length?d.statuses:STATUS_DEFS_DEFAULT.map(x=>({...x,color:(d.statusColors||{})[x.name]||x.color})));if(!document.querySelector(".scrim"))render();else renderHeader()},()=>{});
