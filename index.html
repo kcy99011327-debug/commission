@@ -555,6 +555,25 @@ input[type=date]::-webkit-calendar-picker-indicator{margin-left:auto}
 .strow2 .stx{border:0;background:none;color:var(--ink-2);font-size:1.125rem;line-height:1;width:1.75rem;height:1.75rem;padding:0;border-radius:0.375rem;cursor:pointer}
 .strow2 .stx:hover{color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
 @media (max-width:520px){.strow2{grid-template-columns:auto 2.125rem minmax(0,1fr) auto}.strow2 select{grid-column:2/4;grid-row:2}.strow2 .stx{grid-column:4;grid-row:1}}
+/* poster folders by type */
+.folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,10rem),1fr));gap:clamp(0.625rem,1.4vw,1.25rem)}
+.folder{display:flex;flex-direction:column;padding:0;border:1px solid var(--rule);background:var(--sheet);text-align:left;cursor:pointer;min-width:0;color:inherit}
+.folder:hover{border-color:var(--ink-2)}
+.folder .fcov{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;aspect-ratio:1.2;overflow:hidden;background:var(--paper);gap:1px}
+.folder .fcov img{width:100%;height:100%;object-fit:cover;display:block;min-width:0}
+.folder .fcov i{display:grid;place-items:center;font-style:normal;font-size:0.75rem;color:var(--ink-2)}
+.folder .fname{display:flex;justify-content:space-between;align-items:baseline;gap:0.5rem;padding:0.625rem 0.75rem}
+.folder .fname b{font-size:0.9375rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.folder .fname small{color:var(--ink-2);font-size:0.75rem;flex:none}
+.fback{margin-top:0.75rem}
+/* custom logo */
+.logoset{display:flex;flex-direction:column;gap:0.625rem}
+.lgprev{background:var(--paper);border:1px solid var(--rule);padding:0.75rem;display:flex}
+.lgprev h1.logo{margin:0;width:11rem;max-width:100%;max-height:6rem;aspect-ratio:640/389;font-size:0;background:var(--pink);-webkit-mask:var(--logo) no-repeat left center/contain;mask:var(--logo) no-repeat left center/contain}
+.lgtint{display:flex;gap:0.375rem;align-items:center;font-size:0.8125rem;color:var(--ink-2)}
+.brand h1.logo{max-height:5.5rem}
+@media (min-width:900px){.brand h1.logo{max-height:9rem}}
+h1.logo.raw{-webkit-mask:none!important;mask:none!important;background:var(--logo) no-repeat left center/contain!important}
 /* brand logo: alpha mask painted in the theme color */
 .brand{align-items:center}
 .brand h1.logo{width:6.25rem;margin:0.375rem 0.5rem;aspect-ratio:640/389;flex:none;font-size:0;background:var(--pink);-webkit-mask:var(--logo) no-repeat left center/contain;mask:var(--logo) no-repeat left center/contain}
@@ -751,7 +770,21 @@ function renderGal(){
   const tile=c=>{const id=V==="wip"?latest(c):cover(c);const n=(c.images||[]).length;const st=stage(c);
     return `<div class="tile" role="button" tabindex="0" style="--r:${ratioOf(c,id)}" data-open="${c.id}" data-dk="${esc((V==="wip"?c.due:c.doneDate)||"")}">${id?`<img class="pic" draggable="false" data-aid="${id}" src="${imgSrc(id)}" alt="${esc(c.nick)} 작업물" loading="lazy">`:`<span class="ph">${V==="wip"?"아직 올린 시안 없음":c.notionUrl?"노션에 보관 중":"이미지 없음"}</span>`}
     <span class="cap"><strong>${esc(c.nick)}</strong>${capLines(c,V)}</span></div>`};
-  h+=`<div class="rowtrack" style="margin-top:0.625rem"><button type="button" class="chip" data-gs="time" aria-pressed="${SO==="time"}">${V==="wip"?"마감 순":"작업 순"}</button><button type="button" class="chip" data-gs="price" aria-pressed="${SO==="price"}">가격대별</button></div>`;
+  h+=`<div class="rowtrack" style="margin-top:0.625rem"><button type="button" class="chip" data-gs="time" aria-pressed="${SO==="time"}">${V==="wip"?"마감 순":"작업 순"}</button><button type="button" class="chip" data-gs="price" aria-pressed="${SO==="price"}">가격대별</button><button type="button" class="chip" data-gs="type" aria-pressed="${SO==="type"}">타입별</button></div>`;
+  if(SO==="type"){
+    const tname=c=>c.subtype||"타입 없음";
+    const order=[...SUBTYPES.filter(Boolean),"타입 없음"];
+    const groups=new Map();list.forEach(c=>{const k=tname(c);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(c)});
+    const keys=[...groups.keys()].sort((a,b)=>(order.indexOf(a)<0?99:order.indexOf(a))-(order.indexOf(b)<0?99:order.indexOf(b))||a.localeCompare(b,"ko"));
+    if(S.galType&&!groups.has(S.galType))S.galType=null;
+    if(!list.length)h+=`<div class="empty" style="margin-top:1rem">${V==="wip"?"상영 예정인 커미션이 없어요.":"상영 중인 작품이 아직 없어요."}</div>`;
+    else if(!S.galType){
+      h+=`<h2 class="sec">타입별 폴더<span class="meta">${keys.length}개</span></h2><div class="folders">${keys.map(k=>{const g=groups.get(k);
+        const covers=g.map(c=>V==="wip"?latest(c):cover(c)).filter(Boolean).slice(0,3);
+        return `<button type="button" class="folder" data-gt="${esc(k)}"><span class="fcov">${covers.length?covers.map(id=>`<img src="${imgSrc(id)}" alt="" loading="lazy">`).join(""):`<i>이미지 없음</i>`}</span><span class="fname"><b>${esc(k)}</b><small>${g.length}건</small></span></button>`}).join("")}</div>`}
+    else{const g=groups.get(S.galType);
+      h+=`<div class="fback"><button type="button" class="chip" data-gt="">← 타입 목록</button></div><h2 class="sec">${esc(S.galType)}<span class="meta">${g.length}건</span></h2><div class="gal">${g.map(tile).join("")}</div>`}
+    $("#view").innerHTML=h;layoutGal();wireBulk();return}
   if(SO==="time"){
     if(!list.length)h+=`<div class="empty" style="margin-top:1rem">${V==="wip"?"상영 예정인 커미션이 없어요.":"상영 중인 작품이 아직 없어요."}</div>`;
     else if(V==="wip")h+=`<h2 class="sec">상영 예정<span class="meta">${list.length}건 · 마감 가까운 순</span></h2><div class="gal">${list.map(tile).join("")}</div>`;
@@ -807,6 +840,10 @@ function ratioOf(c,id){if(!id)return .719;const im=(c.images||[]).find(x=>x.id==
 document.addEventListener("load",e=>{const im=e.target;if(!(im instanceof HTMLImageElement)||!im.classList.contains("pic")||!im.naturalHeight)return;
   const r=im.naturalWidth/im.naturalHeight;const id=im.dataset.aid;if(id)RATIO.set(id,r);
   const t=im.closest(".tile");if(t){t.style.setProperty("--r",Math.min(3,Math.max(.33,r)).toFixed(3));layoutGalSoon()}},true);
+function applyLogo(l,el){el=el||document.querySelector(".brand h1.logo");if(!el)return;
+  if(l&&l.id){const u=`url("${imgSrc(l.id)}")`;el.style.setProperty("--logo",u);el.style.aspectRatio=String(Math.min(8,Math.max(.25,l.r||2)));el.classList.toggle("raw",l.tint===false)}
+  else{el.style.removeProperty("--logo");el.style.aspectRatio="";el.classList.remove("raw");
+    const b=document.querySelector(".brand h1.logo");if(b&&el!==b){b.style.removeProperty("--logo");el.style.setProperty("--logo",getComputedStyle(b).getPropertyValue("--logo"))}}}
 async function imgMeta(f){try{const b=await createImageBitmap(f);const r=b.width/b.height;b.close&&b.close();return{r:+r.toFixed(4)}}catch(e){return{}}}
 const isDup=(c,f)=>(c.images||[]).some(x=>x.name===f.name&&(x.size==null||x.size===f.size));
 
@@ -824,8 +861,7 @@ document.addEventListener("paste",e=>{
   if(!assets){toast("이미지 올리기는 편집 권한이 있을 때만 가능해요");return}
   e.preventDefault();
   if(S.pasteUpload){S.pasteUpload(files);return}
-  if(!document.querySelector(".scrim")&&S.tab==="gal"){bulkReview(files);return}
-  if(!document.querySelector(".scrim"))toast("커미션을 열거나 포스터 탭에서 붙여넣어 주세요");
+  if(!document.querySelector(".scrim")){newFromFiles(files);return}
 });
 
 /* ---------- bulk upload: match file names to commissions ---------- */
@@ -891,7 +927,8 @@ document.addEventListener("click",e=>{
   const o=e.target.closest("[data-open]");if(o&&!e.target.closest(".panel")){openJob(o.dataset.open);return}
   const j=e.target.closest("[data-jump]");if(j){e.preventDefault();const t=document.getElementById(j.dataset.jump);if(t){const top=t.getBoundingClientRect().top+window.scrollY-(innerWidth<900?($("header.top").offsetHeight+8):16);window.scrollTo({top,behavior:"smooth"})}return}
   const lm=e.target.closest("[data-lm]");if(lm){S.listMode=lm.dataset.lm;store("listMode",S.listMode);renderList();return}
-  const gs=e.target.closest("[data-gs]");if(gs){S.galSort=gs.dataset.gs;store("galSort",S.galSort);renderGal();return}
+  const gs=e.target.closest("[data-gs]");if(gs){S.galSort=gs.dataset.gs;S.galType=null;store("galSort",S.galSort);renderGal();return}
+  const gt=e.target.closest("[data-gt]");if(gt){S.galType=gt.dataset.gt||null;renderGal();window.scrollTo({top:0});return}
   const gv=e.target.closest("[data-gv]");if(gv){S.galV=gv.dataset.gv;store("galV",S.galV);renderGal();return}
   const cp=e.target.closest("[data-copy]");if(cp){const t=S.t.find(x=>x.id===cp.dataset.copy);copyText(fill(t.body,S.c.find(x=>x.id===S.tplFor)));return}
   const te=e.target.closest("[data-tedit]");if(te){openTpl(S.t.find(x=>x.id===te.dataset.tedit));return}
@@ -901,22 +938,29 @@ $("#addBtn").onclick=()=>openJob(null);
 ["dragover","drop"].forEach(t=>window.addEventListener(t,e=>{if(!e.target.closest||!e.target.closest(".panel.dropok"))e.preventDefault()}));
 /* poster tab: drop image files anywhere on the screen to start a bulk upload */
 const hasFiles=e=>[...(e.dataTransfer?.types||[])].includes("Files");
-const pageDropOK=()=>assets&&S.tab==="gal"&&!document.querySelector(".scrim");
+const pageDropOK=()=>assets&&!document.querySelector(".scrim");
 let pageDepth=0;
 function dropHint(on){let el=document.getElementById("dropHint");
-  if(on&&!el){el=document.createElement("div");el.id="dropHint";el.innerHTML="<div><strong>놓으면 올리기</strong><span>파일명에 닉네임이 있으면 커미션에 자동으로 연결돼요</span></div>";document.body.appendChild(el)}
+  if(on&&!el){el=document.createElement("div");el.id="dropHint";el.innerHTML="<div><strong>놓으면 새 커미션 만들기</strong><span>파일명에 의뢰인 이름이 있으면 자동으로 채워져요</span></div>";document.body.appendChild(el)}
   if(!on&&el)el.remove()}
 window.addEventListener("dragenter",e=>{if(!hasFiles(e)||!pageDropOK())return;pageDepth++;dropHint(true)});
 window.addEventListener("dragleave",e=>{if(!document.getElementById("dropHint"))return;if(--pageDepth<=0){pageDepth=0;dropHint(false)}});
 window.addEventListener("drop",e=>{const on=!!document.getElementById("dropHint");pageDepth=0;dropHint(false);
-  if(on&&pageDropOK()&&e.dataTransfer?.files?.length)bulkReview([...e.dataTransfer.files])});
+  if(on&&pageDropOK()&&e.dataTransfer?.files?.length)newFromFiles([...e.dataTransfer.files])});
 
 /* ---------- job sheet ---------- */
 function opts(arr,v){return arr.map(x=>`<option${x===v?" selected":""}>${esc(x)}</option>`).join("")}
 function close(){$("#layer").innerHTML="";document.body.style.overflow="";S.pasteUpload=null;S.dismiss=null}
 function shell(inner){$("#layer").innerHTML=`<div class="scrim" id="scrim"><div class="panel" role="dialog" aria-modal="true">${inner}</div></div>`;document.body.style.overflow="hidden";
   $("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")(S.dismiss||close)()})}
-function openJob(id){
+/* image dropped/pasted with nothing open: start a new commission with it, client guessed from the file name */
+function nameFromFile(n){const t=String(n||"").normalize("NFC").replace(/\.[a-z0-9]+$/i,"");
+  const m=t.match(/([^\s_\-.()\[\]0-9]+)님/);if(m)return m[1];
+  const w=t.replace(/커미션|commission|완성본|시안|러프|최종|final/gi," ").split(/[\s_\-.()\[\]]+/).filter(x=>x&&!/^\d+$/.test(x));return w[0]||""}
+function newFromFiles(all){const files=all.filter(f=>/^image\//.test(f.type));if(!files.length){toast("이미지 파일만 올릴 수 있어요");return}
+  const m=files.map(f=>matchCommission(f.name)).find(Boolean);
+  openJob(null,{files,client:m?clientOf(m):nameFromFile(files[0].name),match:m||null})}
+function openJob(id,pre){
   const c0=id?S.c.find(x=>x.id===id):null;
   const c=c0?structuredClone(c0):{nick:"",type:"포스터 타입",subtype:"",people:"",source:"카톡",status:"신청확인",due:"",doneDate:"",price:null,quoteBefore:null,quoteAfter:null,notes:"",fast:"",email:"",link:"",notionUrl:"",images:[]};
   const draw=()=>{
@@ -956,6 +1000,16 @@ function openJob(id){
       $("#f-hint").textContent=nm?(others.length?`${nm}님의 ${$("#f-seq").value}번째 의뢰 · 이전 의뢰 ${others.length}건`:`${nm}님의 첫 의뢰`):""};
     $("#f-client").oninput=()=>{if(!c0){const nm=$("#f-client").value.trim();const mx=clientJobs(nm).reduce((a,x)=>Math.max(a,x.seq||1),0);$("#f-seq").value=mx+1}hint()};
     $("#f-seq").oninput=hint;hint();
+    if(pre&&!c0){
+      if(pre.client&&!$("#f-client").value){$("#f-client").value=pre.client;$("#f-client").oninput()}
+      if(pre.match){const mm=pre.match;
+        $("#f-hint").insertAdjacentHTML("afterend",`<div class="notice full" id="pmatch" style="grid-column:1/-1;display:flex;gap:0.5rem;align-items:center;justify-content:space-between;flex-wrap:wrap">파일명이 기존 ‘${esc(mm.nick)}’ 커미션과 같아요. 새로 만들지 않고 거기에 넣을까요?<span style="display:flex;gap:0.375rem"><button class="btn" type="button" id="pmNo">새로 만들기</button><button class="btn pri" type="button" id="pmYes">기존 커미션에 넣기</button></span></div>`);
+        $("#pmNo").onclick=()=>{pre.match=null;$("#pmatch").remove()};
+        $("#pmYes").onclick=async()=>{read();const cur=S.c.find(x=>x.id===mm.id);if(!cur){toast("커미션을 찾지 못했어요");return}
+          const imgs=[...(cur.images||[]),...c.images.filter(im=>!(cur.images||[]).some(x=>x.id===im.id))];
+          try{await db.collection("commissions").doc(cur.id).update({images:imgs});S.dismiss=null;close();toast(`‘${cur.nick}’에 ${c.images.length}장 넣었어요`)}catch(e){toast("넣지 못했어요")}}}
+      if(pre.files){const fs=pre.files;pre.files=null;setTimeout(()=>upload(fs),0)}
+    }
     $("#stEdit").onclick=async()=>{read();let id=c0?c0.id:null;if(c.client&&changed()){await saveDoc(c,true);id=c.id;snap=pick(c)}openStatusMgr(()=>openJob(id))};
     document.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{read();c.status=b.dataset.st;if(DONE.has(c.status)&&!c.doneDate)c.doneDate=iso(today());draw()});
     document.querySelectorAll("[data-view]").forEach(im=>im.onclick=()=>{const v=document.createElement("div");v.className="viewer";v.innerHTML=`<img src="${imgSrc(im.dataset.view)}" alt="">`;v.onclick=()=>v.remove();document.body.appendChild(v)});
@@ -1095,6 +1149,11 @@ $("#themeBtn").onclick=()=>{
     <div class="custom"><span class="hint">직접 고르기</span><input type="color" id="cc" value="${a}" aria-label="색 고르기"><input type="text" id="ch" value="${a}" maxlength="7" aria-label="색 코드"><button class="btn" type="button" id="reset">기본 색으로</button></div>
     <h2 class="sec" style="margin-top:1.25rem">화면 밝기</h2>
     <div class="seg" style="grid-template-columns:repeat(2,1fr);max-width:18.75rem">${[["auto","상영관 (어둡게)"],["light","로비 (밝게)"]].map(([k,l])=>`<button type="button" data-md="${k}" aria-selected="${(cur.mode==="dark"?"auto":cur.mode)===k}">${l}</button>`).join("")}</div>
+    <h2 class="sec" style="margin-top:1.25rem">로고<span class="meta">맨 위 타이틀</span></h2>
+    <div class="logoset"><div class="lgprev"><h1 class="logo" id="lgPrev" role="img" aria-label="지금 로고"></h1></div>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">${assets?`<button class="btn" type="button" id="lgUp">이미지 올리기</button><input type="file" id="lgFile" accept="image/*" hidden>`:""}<button class="btn" type="button" id="lgReset"${(S.rawSettings||{}).logo?"":" disabled"}>기본 로고</button>
+      <label class="lgtint"><input type="checkbox" id="lgTint"${((S.rawSettings||{}).logo||{}).tint===false?"":" checked"}> 테마 색으로 칠하기</label></div>
+      <p class="hint" id="lgMsg" style="margin:0">배경이 투명한 PNG가 가장 잘 어울려요. ‘테마 색으로 칠하기’를 끄면 이미지 색 그대로 보여요.</p></div>
     <h2 class="sec" style="margin-top:1.25rem">상태<span class="meta">이름·색·순서·성격</span></h2>
     <p class="hint" style="margin:0 0 0.5rem">상영 중은 수익과 포스터에 들어가고, 취소는 수익에서 빠져요. 이름을 바꾸면 그 상태인 커미션도 함께 바뀌어요.</p>
     ${stEditorHTML(st.rows)}
@@ -1122,6 +1181,15 @@ $("#themeBtn").onclick=()=>{
       try{const r=await importBackup(f,t=>msg.textContent=t);msg.textContent=`가져왔어요 · 항목 ${r.docs}개, 이미지 ${r.imgs}장${r.fail?` (실패 ${r.fail}장)`:""}`;toast(`백업을 가져왔어요 · 커미션·템플릿 ${r.docs}개, 이미지 ${r.imgs}장${r.fail?` (실패 ${r.fail}장)`:""}`);close();render();return}
       catch(err){msg.textContent=err&&err.message==="nodata"?"이 ZIP에는 가져올 데이터(data.json)가 없어요. 새로 받은 전체 백업을 골라 주세요.":"가져오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요."}
       b.disabled=false;e.target.value=""};
+    applyLogo((S.rawSettings||{}).logo,$("#lgPrev"));
+    const lgSave=async(logo,msg)=>{const m=$("#lgMsg");try{const old=(S.rawSettings||{}).logo;await saveSettings({logo:logo||null});S.rawSettings={...(S.rawSettings||{}),logo:logo||null};applyLogo(logo);applyLogo(logo,$("#lgPrev"));$("#lgReset").disabled=!logo;m.textContent=msg;
+        if(old&&old.id&&(!logo||old.id!==logo.id)&&assets)try{await assets.delete(old.id)}catch(e){}}catch(e){m.textContent="저장하지 못했어요. 다시 시도해 주세요."}};
+    if($("#lgUp")){$("#lgUp").onclick=()=>$("#lgFile").click();
+      $("#lgFile").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;$("#lgMsg").textContent="올리는 중…";
+        try{const meta=await imgMeta(f);const r=await assets.upload(f,{type:f.type||"image/png"});await lgSave({id:r.id,r:meta.r||2,tint:$("#lgTint").checked},"로고를 바꿨어요.")}
+        catch(err){$("#lgMsg").textContent="올리지 못했어요. 이미지 파일인지 확인해 주세요."}}}
+    $("#lgReset").onclick=()=>lgSave(null,"기본 로고로 돌렸어요.");
+    $("#lgTint").onchange=e=>{const l=(S.rawSettings||{}).logo;if(l)lgSave({...l,tint:e.target.checked},e.target.checked?"테마 색으로 칠했어요.":"이미지 색 그대로 보여요.")};
     if(!downloads){$("#bkCsv").disabled=$("#bkZip").disabled=true;$("#bkMsg").textContent="이 화면에서는 파일을 내려받을 수 없어요. claude.ai에서 열어 주세요."}
     const restore=()=>{applyTheme(before.accent,before.mode);applyStatusDefs(before.defs)};
     $("#x").onclick=()=>{restore();close()};
@@ -1379,7 +1447,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeCtx()});
 window.addEventListener("scroll",closeCtx,true);window.addEventListener("resize",closeCtx);
 
 /* ---------- boot ---------- */
-(function(){const t=today();S.calY=t.getFullYear();S.calM=t.getMonth();const tab=load("tab");if(tab&&["list","cal","gal","tpl","stats"].includes(tab))S.tab=tab;const gv=load("galV");if(gv==="wip"||gv==="done")S.galV=gv;const lmo=load("listMode");if(lmo==="due"||lmo==="client")S.listMode=lmo;const gso=load("galSort");if(["time","price"].includes(gso))S.galSort=gso;render()})();
+(function(){const t=today();S.calY=t.getFullYear();S.calM=t.getMonth();const tab=load("tab");if(tab&&["list","cal","gal","tpl","stats"].includes(tab))S.tab=tab;const gv=load("galV");if(gv==="wip"||gv==="done")S.galV=gv;const lmo=load("listMode");if(lmo==="due"||lmo==="client")S.listMode=lmo;const gso=load("galSort");if(["time","price","type"].includes(gso))S.galSort=gso;render()})();
 (async()=>{
   try{await standaloneInit()}catch(e){$("#view").innerHTML=`<div class="empty" style="margin-top:1.25rem">서버에 연결하지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.</div>`;return}
   if(!db){$("#view").innerHTML=`<div class="empty" style="margin-top:1.25rem">저장소에 연결할 수 없어요. 로그인한 상태로 다시 열어 주세요.</div>`;return}
@@ -1388,6 +1456,6 @@ window.addEventListener("scroll",closeCtx,true);window.addEventListener("resize"
     if(!document.querySelector(".scrim")||first)render();else renderHeader();first=false},
     e=>{$("#view").innerHTML=`<div class="empty">목록을 불러오지 못했어요. 새로고침해 주세요.</div>`});
   db.collection("templates").orderBy("order").onSnapshot(s=>{S.t=s.docs.map(d=>({id:d.id,...d.data()}));if(S.tab==="tpl"&&!document.querySelector(".scrim"))renderTpl()},()=>{});
-  db.doc("settings/main").onSnapshot(s=>{const d=s.exists?s.data():{};S.rawSettings=d;S.settingsExists=s.exists;applyAppIcon(d.appIcon||"");S.slots=d.slots??null;applyTheme(d.accent,d.mode);applyStatusDefs(Array.isArray(d.statuses)&&d.statuses.length?d.statuses:STATUS_DEFS_DEFAULT.map(x=>({...x,color:(d.statusColors||{})[x.name]||x.color})));if(!document.querySelector(".scrim"))render();else renderHeader()},()=>{});
+  db.doc("settings/main").onSnapshot(s=>{const d=s.exists?s.data():{};S.rawSettings=d;S.settingsExists=s.exists;applyAppIcon(d.appIcon||"");applyLogo(d.logo);S.slots=d.slots??null;applyTheme(d.accent,d.mode);applyStatusDefs(Array.isArray(d.statuses)&&d.statuses.length?d.statuses:STATUS_DEFS_DEFAULT.map(x=>({...x,color:(d.statusColors||{})[x.name]||x.color})));if(!document.querySelector(".scrim"))render();else renderHeader()},()=>{});
 })();
 </script>
