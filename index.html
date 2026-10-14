@@ -574,6 +574,12 @@ input[type=date]::-webkit-calendar-picker-indicator{margin-left:auto}
 .brand h1.logo{max-height:5.5rem}
 @media (min-width:900px){.brand h1.logo{max-height:9rem}}
 h1.logo.raw{-webkit-mask:none!important;mask:none!important;background:var(--logo) no-repeat left center/contain!important}
+/* type editor rows */
+.tyrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:0.375rem;align-items:center;background:var(--sheet);border:1px solid var(--rule);padding:0.375rem}
+.tyrow .ord{display:flex;gap:2px}.tyrow .ord .btn{padding:3px 0.4375rem;font-size:0.75rem}.tyrow .btn:disabled{opacity:.35}
+.tyrow input{padding:0.4375rem 0.5rem;border:1px solid var(--rule);border-radius:0.5rem;background:var(--paper);min-width:0;width:100%}
+.tyrow .stx{border:0;background:none;color:var(--ink-2);font-size:1.125rem;line-height:1;width:1.75rem;height:1.75rem;padding:0;border-radius:0.375rem;cursor:pointer}
+.tyrow .stx:hover{color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
 /* brand logo: alpha mask painted in the theme color */
 .brand{align-items:center}
 .brand h1.logo{width:6.25rem;margin:0.375rem 0.5rem;aspect-ratio:640/389;flex:none;font-size:0;background:var(--pink);-webkit-mask:var(--logo) no-repeat left center/contain;mask:var(--logo) no-repeat left center/contain}
@@ -618,7 +624,9 @@ let STATUSES=STATUS_DEFS_DEFAULT.map(d=>d.name);
 let ACTIVE=new Set(STATUS_DEFS_DEFAULT.filter(d=>d.kind==="active").map(d=>d.name));
 let DONE=new Set(["완성본 전송"]),CANCEL=new Set(["취소"]);
 const TYPES=["포스터 타입","LD 전신","LD 두상","기타"];
-const SUBTYPES=["","①심플","②캐릭터 중심","③배경 중심","④번외"];
+const TYPES_DEFAULT=["①심플","②캐릭터 중심","③배경 중심","④번외"];
+let SUBTYPES=["",...TYPES_DEFAULT];
+const applyTypes=list=>{SUBTYPES=["",...(Array.isArray(list)&&list.length?list:TYPES_DEFAULT)]};
 const SOURCES=["크레페","카톡","기타"];
 const KINDS=["시안","완성본"];
 const S={c:[],t:[],slots:null,tab:"list",calY:0,calM:0,q:"",galF:"all",tplFor:""};
@@ -1141,7 +1149,7 @@ const plainDefs=rows=>rows.map(({name,color,kind})=>({name,color,kind}));
 
 $("#themeBtn").onclick=()=>{
   const before={accent:S.accent,mode:S.mode,defs:S.statusDefs.map(d=>({...d}))};
-  let cur={accent:before.accent,mode:before.mode};const st={rows:stRows()};
+  let cur={accent:before.accent,mode:before.mode};const st={rows:stRows()};const ty={rows:SUBTYPES.filter(Boolean).map(n=>({name:n,orig:n}))};
   const draw=()=>{const a=cur.accent||"#e2437a";
     shell(`<div class="bar"><h3>설정</h3><button class="btn" type="button" id="x">닫기</button></div>
     <h2 class="sec" style="margin-top:0.25rem">테마 색상<span class="meta">버튼·강조 표시·오늘 날짜</span></h2>
@@ -1157,6 +1165,14 @@ $("#themeBtn").onclick=()=>{
     <h2 class="sec" style="margin-top:1.25rem">상태<span class="meta">이름·색·순서·성격</span></h2>
     <p class="hint" style="margin:0 0 0.5rem">상영 중은 수익과 포스터에 들어가고, 취소는 수익에서 빠져요. 이름을 바꾸면 그 상태인 커미션도 함께 바뀌어요.</p>
     ${stEditorHTML(st.rows)}
+    <h2 class="sec" style="margin-top:1.25rem">타입<span class="meta">이름·순서</span></h2>
+    <p class="hint" style="margin:0 0 0.5rem">이름을 바꾸면 그 타입인 커미션도 함께 바뀌어요.</p>
+    <div class="stmgr">${ty.rows.map((r,i)=>{const u=r.orig?S.c.filter(c=>c.subtype===r.orig).length:0;return `<div class="tyrow">
+      <span class="ord"><button type="button" class="btn" data-tup="${i}" aria-label="위로"${i?"":" disabled"}>↑</button><button type="button" class="btn" data-tdn="${i}" aria-label="아래로"${i<ty.rows.length-1?"":" disabled"}>↓</button></span>
+      <input type="text" data-tn="${i}" value="${esc(r.name)}" placeholder="타입 이름" maxlength="20" aria-label="타입 이름">
+      <button type="button" class="stx" data-tdel="${i}" data-used="${u}" aria-label="삭제" title="삭제">×</button></div>`}).join("")}</div>
+    <div style="display:flex;gap:0.5rem;margin-top:0.625rem;flex-wrap:wrap"><button class="btn" type="button" id="addTy">＋ 타입 추가</button><button class="btn" type="button" id="tyReset">기본 타입으로</button></div>
+    <p class="hint" id="tyMsg" style="margin-top:0.5rem"></p>
     <h2 class="sec" style="margin-top:1.25rem">백업<span class="meta">내 컴퓨터·폰에 저장</span></h2>
     <p class="hint" style="margin:0 0 0.5rem">한 달에 한 번쯤 받아두면 안전해요. 전체 백업에는 커미션 목록, 답장 템플릿, 모든 이미지가 들어가요.</p>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap"><button class="btn" type="button" id="bkCsv">커미션 목록 (CSV)</button><button class="btn" type="button" id="bkZip">전체 백업 (ZIP)</button><button class="btn" type="button" id="bkImp">백업 가져오기</button><input type="file" id="bkFile" accept=".zip,application/zip" hidden></div>
@@ -1195,14 +1211,29 @@ $("#themeBtn").onclick=()=>{
     $("#x").onclick=()=>{restore();close()};
     $("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")restore()});
     wireStEditor(st,draw);
+    document.querySelectorAll("[data-tn]").forEach(el=>el.oninput=()=>{ty.rows[+el.dataset.tn].name=el.value});
+    const tmv=(i,d)=>{const j=i+d;if(j<0||j>=ty.rows.length)return;[ty.rows[i],ty.rows[j]]=[ty.rows[j],ty.rows[i]];draw()};
+    document.querySelectorAll("[data-tup]").forEach(b=>b.onclick=()=>tmv(+b.dataset.tup,-1));
+    document.querySelectorAll("[data-tdn]").forEach(b=>b.onclick=()=>tmv(+b.dataset.tdn,1));
+    document.querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>{const u=+b.dataset.used||0;
+      if(u){$("#tyMsg").textContent=`이 타입인 커미션이 ${u}건 있어요. 그 커미션들의 타입을 바꾼 뒤 지울 수 있어요.`;return}
+      ty.rows.splice(+b.dataset.tdel,1);draw()});
+    $("#addTy").onclick=()=>{ty.rows.push({name:"",orig:null});draw();const ins=document.querySelectorAll("[data-tn]");ins[ins.length-1]?.focus()};
+    $("#tyReset").onclick=()=>{const keep=ty.rows.filter(r=>r.orig&&S.c.some(c=>c.subtype===r.orig)&&!TYPES_DEFAULT.includes(r.orig));
+      if(keep.length){$("#tyMsg").textContent=`‘${keep[0].orig}’ 타입인 커미션이 있어서 기본으로 되돌릴 수 없어요.`;return}
+      ty.rows=TYPES_DEFAULT.map(n=>({name:n,orig:ty.rows.find(r=>r.orig===n)?n:null}));draw()};
     document.querySelectorAll("[data-sw]").forEach(b=>b.onclick=()=>{cur.accent=b.dataset.sw;applyTheme(cur.accent,cur.mode);draw()});
     document.querySelectorAll("[data-md]").forEach(b=>b.onclick=()=>{cur.mode=b.dataset.md;applyTheme(cur.accent,cur.mode);draw()});
     $("#cc").oninput=e=>{cur.accent=e.target.value;$("#ch").value=e.target.value;applyTheme(cur.accent,cur.mode);document.querySelectorAll("[data-sw]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.sw===cur.accent.toLowerCase()))};
     $("#ch").onchange=e=>{let v=e.target.value.trim();if(!v.startsWith("#"))v="#"+v;if(HEX.test(v)){cur.accent=v.toLowerCase();applyTheme(cur.accent,cur.mode);draw()}else toast("#ff6699 같은 6자리 색 코드를 넣어 주세요")};
     $("#reset").onclick=()=>{cur.accent="";applyTheme("",cur.mode);draw()};
     $("#save").onclick=async()=>{const err=stError(st.rows);if(err){$("#stMsg").textContent=err;$("#stMsg").scrollIntoView({block:"center"});return}
+      ty.rows.forEach(r=>r.name=r.name.trim());
+      const tErr=ty.rows.some(r=>!r.name)?"이름이 빈 타입이 있어요":new Set(ty.rows.map(r=>r.name)).size!==ty.rows.length?"같은 이름의 타입이 있어요":"";
+      if(tErr){$("#tyMsg").textContent=tErr;$("#tyMsg").scrollIntoView({block:"center"});return}
       $("#save").disabled=true;
-      try{await saveSettings({accent:cur.accent||"",mode:cur.mode,statuses:plainDefs(st.rows)});const moved=await renameJobs(st.rows);applyStatusDefs(st.rows);
+      try{await saveSettings({accent:cur.accent||"",mode:cur.mode,statuses:plainDefs(st.rows),types:ty.rows.map(r=>r.name)});const moved=await renameJobs(st.rows);applyStatusDefs(st.rows);applyTypes(ty.rows.map(r=>r.name));
+        for(const r of ty.rows.filter(r=>r.orig&&r.orig!==r.name))for(const c of S.c.filter(c=>c.subtype===r.orig)){try{await db.collection("commissions").doc(c.id).update({subtype:r.name})}catch(e){}}
         toast(moved?`저장했어요 · 커미션 ${moved}건의 상태 이름도 바꿨어요`:"저장했어요");close()}
       catch(e){$("#save").disabled=false;toast("저장하지 못했어요")}};
   };
@@ -1456,6 +1487,6 @@ window.addEventListener("scroll",closeCtx,true);window.addEventListener("resize"
     if(!document.querySelector(".scrim")||first)render();else renderHeader();first=false},
     e=>{$("#view").innerHTML=`<div class="empty">목록을 불러오지 못했어요. 새로고침해 주세요.</div>`});
   db.collection("templates").orderBy("order").onSnapshot(s=>{S.t=s.docs.map(d=>({id:d.id,...d.data()}));if(S.tab==="tpl"&&!document.querySelector(".scrim"))renderTpl()},()=>{});
-  db.doc("settings/main").onSnapshot(s=>{const d=s.exists?s.data():{};S.rawSettings=d;S.settingsExists=s.exists;applyAppIcon(d.appIcon||"");applyLogo(d.logo);S.slots=d.slots??null;applyTheme(d.accent,d.mode);applyStatusDefs(Array.isArray(d.statuses)&&d.statuses.length?d.statuses:STATUS_DEFS_DEFAULT.map(x=>({...x,color:(d.statusColors||{})[x.name]||x.color})));if(!document.querySelector(".scrim"))render();else renderHeader()},()=>{});
+  db.doc("settings/main").onSnapshot(s=>{const d=s.exists?s.data():{};S.rawSettings=d;S.settingsExists=s.exists;applyAppIcon(d.appIcon||"");applyTypes(d.types);applyLogo(d.logo);S.slots=d.slots??null;applyTheme(d.accent,d.mode);applyStatusDefs(Array.isArray(d.statuses)&&d.statuses.length?d.statuses:STATUS_DEFS_DEFAULT.map(x=>({...x,color:(d.statusColors||{})[x.name]||x.color})));if(!document.querySelector(".scrim"))render();else renderHeader()},()=>{});
 })();
 </script>
