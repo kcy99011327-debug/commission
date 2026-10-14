@@ -727,7 +727,7 @@ function capLines(c,V){
   return `<small class="l1"><span class="ed" data-ed="subtype" title="눌러서 수정">${esc(c.subtype||"타입 없음")}</span><span class="num ed" data-ed="${df}" title="눌러서 수정">${esc(date)}</span></small>
     <small class="l2 num"><span class="ed" data-ed="quoteBefore" title="작업 전 가격 · 눌러서 수정">${man(b)}</span><span style="color:${dc};font-weight:600">${diff}</span><span class="ed" data-ed="quoteAfter" title="작업 후 가격 · 눌러서 수정">${man(a)}</span></small>`;
 }
-const priceOf=c=>recv(c)||0;
+const priceOf=c=>Number(c.quoteAfter)||recv(c)||0;   // price groups use 작업 후 가격 (falls back to 작업 전 when it is empty)
 function latest(c){const im=(c.images||[]).filter(x=>x.kind!=="레퍼런스");const f=im[im.length-1]||(c.images||[])[0];return f?f.id:null}
 /* finished = sent to the client; in progress = still being worked on (rough / draft stage) */
 const hasFinal=c=>(c.images||[]).some(x=>x.kind==="완성본");
