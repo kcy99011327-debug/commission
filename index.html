@@ -59,6 +59,7 @@ function startRealtime(){
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")refreshAll()});
   window.addEventListener("online",refreshAll)}
 function refreshAll(){for(const c of Object.keys(ST.cols))loadCol(c).catch(()=>{})}
+async function syncNow(){try{await Promise.all(Object.keys(ST.cols).map(c=>loadCol(c)));return true}catch(e){return false}}
 
 /* images: public bucket, random 128-bit ids; big files are shrunk before upload to stay inside the free 1GB */
 async function shrinkImage(f){
@@ -809,6 +810,14 @@ h2.sec{margin-top:0.875rem;margin-bottom:0.375rem}
 @media (min-width:900px){
   header.top .fab{bottom:auto!important;right:auto!important;top:auto!important;left:auto!important}
 }
+.syncBtn.spin svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (min-width:900px){
+  header.top .syncBtn{order:8;margin-top:auto;width:2.5rem;height:2.5rem;padding:0;border-radius:50%;font-size:0;display:flex;align-items:center;justify-content:center;gap:0}
+  header.top .syncBtn span{display:none}
+  header.top .syncBtn svg{width:1.25rem;height:1.25rem;display:block}
+  header.top #themeBtn{margin-top:0!important}
+}
 
 /* standalone: login screen */
 .login{position:fixed;inset:0;z-index:999;display:grid;place-items:center;background:var(--paper);padding:1rem}
@@ -822,7 +831,7 @@ h2.sec{margin-top:0.875rem;margin-bottom:0.375rem}
 
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 class="logo" role="img" aria-label="FEVERPLUSM ZERO 커미션 작업실"></h1><span class="brandmeta"><span class="today" id="todayLbl"></span><button type="button" class="themeBtn" id="themeBtn" aria-label="설정 열기"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>설정</button></span></div>
+    <div class="brand"><h1 class="logo" role="img" aria-label="FEVERPLUSM ZERO 커미션 작업실"></h1><span class="brandmeta"><span class="today" id="todayLbl"></span><button type="button" class="themeBtn syncBtn" id="syncBtn" aria-label="동기화" title="폰·PC 동기화"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.5-4.4M4 4v4h4M4 13a8 8 0 0 0 14.5 4.4M20 20v-4h-4"/></svg><span>동기화</span></button><button type="button" class="themeBtn" id="themeBtn" aria-label="설정 열기"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>설정</button></span></div>
     <div class="ledger">
       <div><small>이번 달 수익</small><b id="kRev">–</b></div>
       <div><small>상영 예정</small><b id="kAct">–</b></div>
@@ -1431,6 +1440,9 @@ async function renameJobs(rows){let moved=0;
   return moved}
 const plainDefs=rows=>rows.map(({name,color,kind})=>({name,color,kind}));
 
+$("#syncBtn").onclick=async()=>{const b=$("#syncBtn");if(b.classList.contains("spin"))return;
+  if(typeof syncNow!=="function"){toast("이 화면은 바뀐 내용이 실시간으로 반영돼요");return}
+  b.classList.add("spin");const ok=await syncNow();b.classList.remove("spin");toast(ok?"최신 상태로 동기화했어요":"동기화하지 못했어요. 인터넷 연결을 확인해 주세요")};
 $("#themeBtn").onclick=()=>{
   const before={accent:S.accent,mode:S.mode,defs:S.statusDefs.map(d=>({...d}))};
   let cur={accent:before.accent,mode:before.mode};const st={rows:stRows()};const ty={rows:SUBTYPES.filter(Boolean).map(n=>({name:n,orig:n}))};const so={rows:SOURCES.map(n=>({name:n,orig:n}))};
