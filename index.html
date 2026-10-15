@@ -593,6 +593,17 @@ h1.logo.raw{-webkit-mask:none!important;mask:none!important;background:var(--log
 html.plain{--marquee:var(--body)}
 html.plain .brandmeta .today,html.plain .job .dd,html.plain .calhead b,html.plain .cal .h,html.plain .cal .d .n{letter-spacing:0}
 html.plain .calhead b{font-weight:700;font-size:1.375rem}
+/* settings toggles: two per row */
+.tg2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.625rem;margin-top:1.25rem}
+.tgl{display:flex;align-items:center;justify-content:space-between;gap:0.625rem;padding:0.75rem;background:var(--sheet);border:1px solid var(--rule);cursor:pointer;min-width:0}
+.tgl>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tgl b{font-size:0.9375rem}.tgl small{font-size:0.6875rem;color:var(--ink-2)}
+.tgl input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.tgl i{flex:none;position:relative;width:2.5rem;height:1.5rem;border-radius:62rem;background:var(--rule);transition:background .15s}
+.tgl i::after{content:"";position:absolute;top:0.1875rem;left:0.1875rem;width:1.125rem;height:1.125rem;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgb(0 0 0/.3);transition:transform .15s}
+.tgl input:checked+i{background:var(--pink)}
+.tgl input:checked+i::after{transform:translateX(1rem)}
+.tgl input:focus-visible+i{outline:2px solid var(--pink);outline-offset:2px}
 /* brand logo: alpha mask painted in the theme color */
 .brand{align-items:center}
 .brand h1.logo{width:6.25rem;margin:0.375rem 0.5rem;aspect-ratio:640/389;flex:none;font-size:0;background:var(--pink);-webkit-mask:var(--logo) no-repeat left center/contain;mask:var(--logo) no-repeat left center/contain}
@@ -1216,11 +1227,10 @@ $("#themeBtn").onclick=()=>{
       <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">${assets?`<button class="btn" type="button" id="fUp">글꼴 파일 올리기</button><input type="file" id="fFile" accept=".ttf,.otf,.woff,.woff2,font/*" hidden>`:""}<button class="btn" type="button" id="fReset"${(S.rawSettings||{}).font?"":" disabled"}>기본 글꼴</button></div>
       <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center"><input type="text" id="fName" list="fList" placeholder="이 기기에 설치된 글꼴 이름 (예: 나눔스퀘어)" style="flex:1;min-width:12rem;padding:0.5rem 0.625rem;border:1px solid var(--rule);border-radius:0.5rem;background:var(--paper)"><datalist id="fList"></datalist>${"queryLocalFonts" in window?`<button class="btn" type="button" id="fList2">설치된 글꼴 불러오기</button>`:""}<button class="btn" type="button" id="fUse">적용</button></div>
       <p class="hint" id="fMsg" style="margin:0">글꼴 파일(TTF·OTF·WOFF)을 올리면 폰과 PC 모두 그 글꼴로 바뀌어요. 설치된 글꼴 이름을 쓰면, 그 글꼴이 없는 기기에서는 기본 글꼴로 보여요.</p></div>
-    <h2 class="sec" style="margin-top:1.25rem">영화관 컨셉<span class="meta">폰·PC 함께</span></h2>
-    <div class="seg" style="grid-template-columns:repeat(2,1fr);max-width:18.75rem">${[["on","켜기"],["off","끄기"]].map(([k,l])=>`<button type="button" data-th="${k}" aria-selected="${((S.rawSettings||{}).theater!==false)===(k==="on")}">${l}</button>`).join("")}</div>
-    <p class="hint" style="margin:0.375rem 0 0">끄면 ‘상영 중·상영 예정·상영표·N월 개봉’이 ‘완료·진행 중·일정표·N월 완료’로 바뀌고, 날짜·제목의 극장 간판 글꼴이 기본 글꼴로 바뀌어요.</p>
-    <h2 class="sec" style="margin-top:1.25rem">화면 밝기</h2>
-    <div class="seg" style="grid-template-columns:repeat(2,1fr);max-width:18.75rem">${[["auto","상영관 (어둡게)"],["light","로비 (밝게)"]].map(([k,l])=>`<button type="button" data-md="${k}" aria-selected="${(cur.mode==="dark"?"auto":cur.mode)===k}">${l}</button>`).join("")}</div>
+    <div class="tg2">
+      <label class="tgl"><span><b>영화관 컨셉</b><small>극장 용어·간판 글꼴 · 폰·PC 함께</small></span><input type="checkbox" id="thTg"${(S.rawSettings||{}).theater!==false?" checked":""}><i aria-hidden="true"></i></label>
+      <label class="tgl"><span><b>어두운 화면</b><small>끄면 밝은 화면</small></span><input type="checkbox" id="mdTg"${cur.mode==="light"?"":" checked"}><i aria-hidden="true"></i></label>
+    </div>
     <h2 class="sec" style="margin-top:1.25rem">로고<span class="meta">맨 위 타이틀</span></h2>
     <div class="logoset"><div class="lgprev"><h1 class="logo" id="lgPrev" role="img" aria-label="지금 로고"></h1></div>
       <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">${assets?`<button class="btn" type="button" id="lgUp">이미지 올리기</button><input type="file" id="lgFile" accept="image/*" hidden>`:""}<button class="btn" type="button" id="lgReset"${(S.rawSettings||{}).logo?"":" disabled"}>기본 로고</button>
@@ -1261,10 +1271,11 @@ $("#themeBtn").onclick=()=>{
       try{const r=await importBackup(f,t=>msg.textContent=t);msg.textContent=`가져왔어요 · 항목 ${r.docs}개, 이미지 ${r.imgs}장${r.fail?` (실패 ${r.fail}장)`:""}`;toast(`백업을 가져왔어요 · 커미션·템플릿 ${r.docs}개, 이미지 ${r.imgs}장${r.fail?` (실패 ${r.fail}장)`:""}`);close();render();return}
       catch(err){msg.textContent=err&&err.message==="nodata"?"이 ZIP에는 가져올 데이터(data.json)가 없어요. 새로 받은 전체 백업을 골라 주세요.":"가져오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요."}
       b.disabled=false;e.target.value=""};
-    document.querySelectorAll("[data-th]").forEach(b=>b.onclick=async()=>{const on=b.dataset.th==="on";
-      document.querySelectorAll("[data-th]").forEach(x=>x.setAttribute("aria-selected",x===b));
+    $("#mdTg").onchange=async e=>{cur.mode=e.target.checked?"auto":"light";before.mode=cur.mode;applyTheme(cur.accent,cur.mode);
+      try{await saveSettings({mode:cur.mode})}catch(err){toast("저장하지 못했어요")}};
+    $("#thTg").onchange=async e=>{const on=e.target.checked;
       setTheater(on);S.rawSettings={...(S.rawSettings||{}),theater:on};
-      try{await saveSettings({theater:on})}catch(e){toast("저장하지 못했어요")}});
+      try{await saveSettings({theater:on})}catch(e){toast("저장하지 못했어요")}};
     document.querySelectorAll("[data-fs]").forEach(b=>b.onclick=()=>{store("fs",b.dataset.fs);applyFs(b.dataset.fs,true);document.querySelectorAll("[data-fs]").forEach(x=>x.setAttribute("aria-selected",x===b))});
     const fSave=async(font,msg)=>{const m=$("#fMsg");try{const old=(S.rawSettings||{}).font;await saveSettings({font:font||null});S.rawSettings={...(S.rawSettings||{}),font:font||null};await applyFont(font);
         $(".fprev b").textContent=(font&&font.name)||"Pretendard (기본)";$("#fReset").disabled=!font;m.textContent=msg;
